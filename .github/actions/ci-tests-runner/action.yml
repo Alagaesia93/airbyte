@@ -1,0 +1,80 @@
+name: "Setup CI Tests Env"
+description: "Setup CI Tests Env for all module types"
+inputs:
+  module-name:
+    required: true
+  module-folder:
+    required: true
+  module-lang:
+    required: true
+  sonar-host:
+    required: true
+  sonar-token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Run tests of CI
+      shell: bash
+      run: |
+        # all CI python packages have the prefix "ci_"
+        pip install --quiet tox==3.24.4
+        tox -r -c ./tools/tox_ci.ini
+        pip install --quiet -e ./tools/ci_*
+
+    - name: Run Python Tests
+      id: run-python-tests
+      if: ${{ env.MODULE_LANG == 'py' }}
+      uses: ./.github/actions/ci-py-tests
+      with:
+        module-name: ${{ inputs.module-name }}
+        module-folder: ${{ inputs.module-folder }}
+
+    - name: Run Java Tests
+      id: run-java-tests
+      if: ${{ env.MODULE_LANG == 'java' }}
+      uses: ./.github/actions/ci-java-tests
+      with:
+        module-name: ${{ inputs.module-name }}
+        module-folder: ${{ inputs.module-folder }}
+
+#      - name: Write Integration Test Credentials for ${{ github.event.inputs.connector }}
+#        run: |
+#          source venv/bin/activate
+#          ci_credentials ${{ github.event.inputs.connector }}
+#        env:
+#          GCP_GSM_CREDENTIALS: ${{ secrets.GCP_GSM_CREDENTIALS }}
+#    - name: Checkout repo
+#      if: ${{ env.ENV_NAME == 'github' }}
+#      uses: actions/checkout@v2
+#      with:
+#        fetch-depth: 0
+##      - uses: sonarsource/sonarqube-scan-action@master
+##        with:
+##          projectBaseDir: airbyte-integrations/connectors
+##          # -Dsonar.tests=.
+##          # -Dsonar.test.inclusions=**/unit_tests/**
+##          args: >
+##            -Dsonar.projectKey=airbite-python-connectors
+##            -Dsonar.exclusions=**/*.java
+##            -Dsonar.verbose=true
+##            -Dsonar.language=py
+##            -Dsonar.sourceEncoding=UTF-8
+##        env:
+##          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+##          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+#
+#        # If you wish to fail your job when the Quality Gate is red, uncomment the
+#        # following lines. This would typically be used to fail a deployment.
+#        # - uses: sonarsource/sonarqube-quality-gate-action@master
+#        #   timeout-minutes: 5
+#        #   env:
+#        #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#
