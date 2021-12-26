@@ -4,7 +4,6 @@
 import os
 import sys
 
-
 # Filenames used to detect whether the dir is a module
 from pathlib import Path
 from typing import List, Set
