@@ -10,6 +10,7 @@ from tasks import TASK_COMMANDS, _run_task, CONFIG_FILE, TOOLS_VERSIONS
 
 
 def update_task_commands_to_generate_reports(module_path):
+    # TODO: update tasks runner after its deployed (https://github.com/airbytehq/airbyte/pull/8873) and refactor this codeblock
     for task, commands in TASK_COMMANDS.items():
         if task == "black":
             commands[-1] = (
