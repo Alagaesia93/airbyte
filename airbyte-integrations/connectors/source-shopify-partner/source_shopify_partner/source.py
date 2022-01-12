@@ -47,11 +47,13 @@ class ShopifyPartnerStream(HttpStream, ABC):
         """
         return "POST"
 
-    @staticmethod
-    def next_page_token(response: requests.Response) -> Optional[Mapping[str, Any]]:
-        next_page = response.links.get("next", None)
-        if next_page:
-            return dict(parse_qsl(urlparse(next_page.get("url")).query))
+    def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
+        json_response = response.json()
+        
+        page_info = json_response['data']['app'][self.data_field]['pageInfo']
+        if page_info['hasNextPage']:
+            next_cursor = json_response['data']['app'][self.data_field]['edges'][-1]['cursor']
+            return {'cursor': next_cursor}
         else:
             return None
 
@@ -120,13 +122,22 @@ class Events(IncrementalShopifyPartnerStream):
         stream_slice: Mapping[str, Any] = None,
         next_page_token: Mapping[str, Any] = None,
     ) -> Optional[Mapping]:
+        if next_page_token != None:
+            cursor = next_page_token['cursor']
+        else:
+            cursor = ""
         return {
             "operationName": "Events",
             "query": '''
-                query Events($app_id: ID!){
+                query Events($app_id: ID!, $cursor: String){
                     app(id: $app_id) {
-                        events {
+                        events(after: $cursor) {
+                            pageInfo {
+                                hasNextPage
+                                hasPreviousPage
+                            }
                             edges {
+                                cursor
                                 node {
                                     type,
                                     occurredAt,
@@ -143,7 +154,8 @@ class Events(IncrementalShopifyPartnerStream):
                 }
             ''',
             'variables': {
-                'app_id': f'gid://partners/App/{self.config["app_id"]}'
+                'app_id': f'gid://partners/App/{self.config["app_id"]}',
+                'cursor': next_page_token['cursor']
             },
         }
 
